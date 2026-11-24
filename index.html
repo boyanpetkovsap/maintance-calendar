@@ -256,9 +256,14 @@
   .dt-row .inp.time { width: 104px; flex: 0 0 104px; }
   .toggle-row { display: flex; align-items: center; justify-content: space-between; }
   .toggle-row label { font-size: 14px; color: var(--text2); margin: 0; }
-  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
-  .chip { border: 1px solid var(--field-border); background: #fff; color: var(--text); border-radius: 14px; padding: 5px 12px; font-size: 12px; }
-  .chip.on { background: var(--sel-bg); border-color: var(--link); color: var(--link); font-weight: 600; }
+  .inp-fixed { background: var(--bg); color: var(--label); cursor: default; font-style: italic; }
+  .chips { display: flex; flex-direction: column; gap: 6px; }
+  .chip { border: 1px solid var(--field-border); background: #fff; color: var(--text); border-radius: 8px; padding: 7px 12px; font-size: 12px; text-align: left; display: flex; flex-direction: column; gap: 2px; }
+  .chip.on { background: var(--sel-bg); border-color: var(--link); color: var(--link); }
+  .chip-label { font-weight: 600; }
+  .chip-examples { font-size: 11px; color: var(--label); font-weight: 400; }
+  .chip.on .chip-label { color: var(--link); }
+  .chip.on .chip-examples { color: var(--link); opacity: 0.8; }
 </style>
 </head>
 <body>
@@ -298,10 +303,17 @@ const EVENT_TYPES = [
   { key: "maint",    label: "Maintenance deliveries (patches etc.)",  color: "#973333" },
   { key: "extranet", label: "Extranet release dates",                 color: "#4A5964" },
   { key: "security", label: "SAP Security Patch days",                color: "#4A5964" },
+  { key: "customer", label: "Customer specific event",                color: "#0F828F" },
 ];
 const typeColor = (k) => (EVENT_TYPES.find(t => t.key === k) || EVENT_TYPES[0]).color;
 
-const TAGS = ["Project GoLive", "Project Testing", "Peak Sales Event", "Financial Closing Reporting", "Special Event"];
+const CUSTOMER_EVENT_TYPES = [
+  { label: "Solution Deployment & Roll-out",       examples: "Go-Live, Migration, Roll-out, Carve-out" },
+  { label: "High-Throughput Processing Peaks",     examples: "Black Friday sales events, mass data load, catalog update, EDI peak exchange" },
+  { label: "Business & Regulatory Obligation Cycles", examples: "Year-end close, regulatory reporting" },
+  { label: "Specialized Business Process Windows", examples: "Full planning run, new product introduction, batch production" },
+  { label: "Non-Standard Operating-State Windows", examples: "Failover test, Datacenter cutover, cyber incident recovery" },
+];
 
 // Customer hierarchy entities (same selector as the Business AI tab)
 const COMPANIES = ["Scott Electronics Global", "Scott Electronics Bulgaria", "Scott Electronics Germany", "Scott Electronics Romania"];
@@ -395,7 +407,6 @@ function CreateEventPopover({ onClose, onCreate }) {
   const [startTime, setStartTime] = useState("10:00");
   const [endDate, setEndDate] = useState("2026-12-02");
   const [endTime, setEndTime] = useState("12:00");
-  const [etype, setEtype] = useState("cloud");
   const [tags, setTags] = useState([]);
 
   const toggleTag = (t) => setTags(ts => ts.includes(t) ? ts.filter(x => x !== t) : [...ts, t]);
@@ -405,11 +416,11 @@ function CreateEventPopover({ onClose, onCreate }) {
     if (!valid) return;
     const ds = dayIndexFromDate(startDate), de = dayIndexFromDate(endDate);
     if (allDay) {
-      onCreate({ allDay: true, event: { type: etype, title: name.trim(), dayStart: ds, dayEnd: Math.max(ds, de), tags } });
+      onCreate({ allDay: true, event: { type: "customer", title: name.trim(), dayStart: ds, dayEnd: Math.max(ds, de), tags } });
     } else {
       let s = timeToHour(startTime), e = timeToHour(endTime);
       if (e <= s) e = Math.min(24, s + 1);
-      onCreate({ allDay: false, event: { type: etype, title: name.trim(), day: ds, start: s, end: e, tags } });
+      onCreate({ allDay: false, event: { type: "customer", title: name.trim(), day: ds, start: s, end: e, tags } });
     }
     onClose();
   };
@@ -449,16 +460,17 @@ function CreateEventPopover({ onClose, onCreate }) {
 
         <div className="fld">
           <label>Event type</label>
-          <select className="inp" value={etype} onChange={e => setEtype(e.target.value)}>
-            {EVENT_TYPES.map(t => <option key={t.key} value={t.key}>{t.label}</option>)}
-          </select>
+          <div className="inp inp-fixed">Customer specific event</div>
         </div>
 
         <div className="fld">
-          <label>Tags</label>
+          <label>Event category</label>
           <div className="chips">
-            {TAGS.map(t => (
-              <button key={t} className={"chip" + (tags.includes(t) ? " on" : "")} onClick={() => toggleTag(t)}>{t}</button>
+            {CUSTOMER_EVENT_TYPES.map(t => (
+              <button key={t.label} className={"chip" + (tags.includes(t.label) ? " on" : "")} onClick={() => toggleTag(t.label)}>
+                <span className="chip-label">{t.label}</span>
+                <span className="chip-examples">{t.examples}</span>
+              </button>
             ))}
           </div>
         </div>
@@ -598,9 +610,9 @@ function CalendarPage() {
               </div>
             ))}
             <div className="lg-divider" />
-            <div className="lg-title">Tags</div>
+            <div className="lg-title">Customer event categories</div>
             <div className="tag-row">
-              {TAGS.map(t => <span className="tag-pill" key={t}>{t}</span>)}
+              {CUSTOMER_EVENT_TYPES.map(t => <span className="tag-pill" key={t.label} title={t.examples}>{t.label}</span>)}
             </div>
           </aside>
           <CalendarGrid allDayEvents={allDayEvents} timedEvents={timedEvents} />
