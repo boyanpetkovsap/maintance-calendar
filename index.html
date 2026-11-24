@@ -268,7 +268,6 @@
   .chip.on .chip-examples { color: var(--link); opacity: 0.8; }
 
   /* ===== Event detail popover ===== */
-  .ev-backdrop { position: fixed; inset: 0; z-index: 80; background: transparent; }
   .ev-pop {
     position: fixed; z-index: 81; width: 320px; max-width: 92vw;
     background: #fff; border: 1px solid var(--border2); border-radius: 12px;
@@ -546,16 +545,19 @@ function EventDetailPopover({ event, anchorRect, onClose }) {
 
   useEffect(() => {
     const onKey = e => { if (e.key === "Escape") onClose(); };
+    const onDown = e => { if (ref.current && !ref.current.contains(e.target)) onClose(); };
     document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
+    document.addEventListener("mousedown", onDown);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.removeEventListener("mousedown", onDown);
+    };
   }, [onClose]);
 
   return (
-    <>
-      <div className="ev-backdrop" onClick={onClose} />
-      <div ref={ref} className="ev-pop" role="dialog" aria-label={"Event details: " + event.title}
-        style={{ top: pos.top, left: pos.left }}>
-        <div className="ev-accent" style={{ background: color }} />
+    <div ref={ref} className="ev-pop" role="dialog" aria-label={"Event details: " + event.title}
+      style={{ top: pos.top, left: pos.left }}>
+      <div className="ev-accent" style={{ background: color }} />
         <div className="ev-head">
           <span className="ev-title">{event.title}</span>
           <button className="x" onClick={onClose} aria-label="Close">{I.close}</button>
@@ -596,8 +598,7 @@ function EventDetailPopover({ event, anchorRect, onClose }) {
             </span>
           </div>
         </div>
-      </div>
-    </>
+    </div>
   );
 }
 
