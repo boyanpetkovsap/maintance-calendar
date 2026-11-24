@@ -203,8 +203,9 @@
   .allday-bars { position: absolute; inset: 0; }
   .allday-bar {
     position: absolute; height: 22px; border-radius: 4px; border-left: 3px solid; font-size: 11px;
-    padding: 3px 8px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; color: var(--text2); cursor: default;
+    padding: 3px 8px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; color: var(--text2); cursor: pointer;
   }
+  .allday-bar:hover { filter: brightness(0.97); box-shadow: 0 1px 4px rgba(34,54,84,.18); }
 
   .cal-scroll { max-height: 440px; overflow-y: auto; }
   .cal-hours { display: flex; }
@@ -219,8 +220,9 @@
   .cal-day.weekend { background: var(--weekend); background-image: repeating-linear-gradient(to bottom, transparent 0, transparent 39px, #e8eaec 39px, #e8eaec 40px); }
   .appt {
     position: absolute; left: 3px; right: 3px; border-radius: 5px; border-left: 3px solid; padding: 4px 7px;
-    font-size: 11px; overflow: hidden; color: var(--text2); cursor: default; box-shadow: 0 1px 2px rgba(0,0,0,.06);
+    font-size: 11px; overflow: hidden; color: var(--text2); cursor: pointer; box-shadow: 0 1px 2px rgba(0,0,0,.06);
   }
+  .appt:hover { filter: brightness(0.97); box-shadow: 0 2px 6px rgba(34,54,84,.2); }
   .appt .at { font-weight: 600; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .appt .as { color: var(--label); font-size: 10px; }
 
@@ -256,7 +258,7 @@
   .dt-row .inp.time { width: 104px; flex: 0 0 104px; }
   .toggle-row { display: flex; align-items: center; justify-content: space-between; }
   .toggle-row label { font-size: 14px; color: var(--text2); margin: 0; }
-  .inp-fixed { background: var(--bg); color: var(--label); cursor: default; font-style: italic; }
+  .inp-fixed { background: var(--bg); color: var(--label); cursor: default; font-style: italic; display: flex; align-items: center; justify-content: center; text-align: center; }
   .chips { display: flex; flex-direction: column; gap: 6px; }
   .chip { border: 1px solid var(--field-border); background: #fff; color: var(--text); border-radius: 8px; padding: 7px 12px; font-size: 12px; text-align: left; display: flex; flex-direction: column; gap: 2px; }
   .chip.on { background: var(--sel-bg); border-color: var(--link); color: var(--link); }
@@ -264,12 +266,36 @@
   .chip-examples { font-size: 11px; color: var(--label); font-weight: 400; }
   .chip.on .chip-label { color: var(--link); }
   .chip.on .chip-examples { color: var(--link); opacity: 0.8; }
+
+  /* ===== Event detail popover ===== */
+  .ev-backdrop { position: fixed; inset: 0; z-index: 80; background: transparent; }
+  .ev-pop {
+    position: fixed; z-index: 81; width: 320px; max-width: 92vw;
+    background: #fff; border: 1px solid var(--border2); border-radius: 12px;
+    box-shadow: 0 16px 40px rgba(34,54,84,.28); overflow: hidden;
+  }
+  .ev-accent { height: 4px; width: 100%; }
+  .ev-head { display: flex; align-items: flex-start; gap: 10px; padding: 14px 14px 10px; }
+  .ev-head .ev-title { font-weight: 700; font-size: 15px; color: var(--text); line-height: 1.3; }
+  .ev-head .x { margin-left: auto; flex: 0 0 auto; background: none; border: none; color: var(--label); padding: 3px; border-radius: 6px; display: inline-flex; }
+  .ev-head .x:hover { background: var(--hover); }
+  .ev-body { padding: 0 14px 14px; }
+  .ev-row { display: flex; gap: 10px; padding: 7px 0; border-top: 1px solid var(--border); }
+  .ev-row:first-child { border-top: none; }
+  .ev-row .ev-ic { flex: 0 0 18px; color: var(--label); margin-top: 1px; }
+  .ev-row .ev-k { flex: 0 0 72px; font-size: 12px; color: var(--label); }
+  .ev-row .ev-v { flex: 1; font-size: 13px; color: var(--text2); }
+  .ev-type { display: inline-flex; align-items: center; gap: 7px; }
+  .ev-type .ev-dot { width: 10px; height: 10px; border-radius: 3px; flex: 0 0 auto; }
+  .ev-cats { display: flex; flex-wrap: wrap; gap: 6px; }
+  .ev-cat { font-size: 11px; color: var(--text); background: var(--sel-bg); border: 1px solid #cfe3fb; border-radius: 12px; padding: 2px 9px; }
+  .ev-none { color: var(--label); font-style: italic; }
 </style>
 </head>
 <body>
 <div id="root"></div>
 <script type="text/babel">
-const { useState, useRef } = React;
+const { useState, useRef, useEffect, useLayoutEffect } = React;
 
 /* ---------------- Icons ---------------- */
 const I = {
@@ -293,6 +319,8 @@ const I = {
   report: <svg width="16" height="16" viewBox="0 0 18 18" fill="none"><path d="M3 15V9M7 15V5M11 15v-4M15 15V3" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/></svg>,
   assist: <svg width="16" height="16" viewBox="0 0 18 18" fill="none"><circle cx="9" cy="9" r="7" stroke="currentColor" strokeWidth="1.3"/><path d="M7 7a2 2 0 013.3 1.5c0 1.2-1.3 1.5-1.3 2.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/><circle cx="9" cy="13" r=".9" fill="currentColor"/></svg>,
   legal: <svg width="16" height="16" viewBox="0 0 18 18" fill="none"><path d="M9 2v13M3 15h12M4 6h10l-2-3H6L4 6z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round"/></svg>,
+  clock: <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6" stroke="currentColor" strokeWidth="1.3"/><path d="M8 5v3.2l2.2 1.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/></svg>,
+  dotgrid: <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="3" y="3" width="4" height="4" rx="1" fill="currentColor"/><rect x="9" y="3" width="4" height="4" rx="1" fill="currentColor"/><rect x="3" y="9" width="4" height="4" rx="1" fill="currentColor"/><rect x="9" y="9" width="4" height="4" rx="1" fill="currentColor"/></svg>,
 };
 
 /* ---------------- Data from the SAP for Me Calendar reference ---------------- */
@@ -359,6 +387,17 @@ function fmtHour(h) {
   const hh = Math.floor(h) % 24;
   const mm = Math.round((h - Math.floor(h)) * 60);
   return String(hh).padStart(2, "0") + ":" + String(mm).padStart(2, "0");
+}
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const DAYNAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+function dateFromDayIndex(i) {
+  const d = new Date(WEEK_START);
+  d.setDate(d.getDate() + i);
+  return d;
+}
+function fmtDay(i) {
+  const d = dateFromDayIndex(i);
+  return `${DAYNAMES[d.getDay()]}, ${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
 }
 
 /* ---------------- Customer hierarchy selector ---------------- */
@@ -483,8 +522,87 @@ function CreateEventPopover({ onClose, onCreate }) {
   );
 }
 
+/* ---------------- Event detail popover ---------------- */
+function EventDetailPopover({ event, anchorRect, onClose }) {
+  const ref = useRef(null);
+  const [pos, setPos] = useState({ top: -9999, left: -9999 });
+  const color = typeColor(event.type);
+  const typeLabel = (EVENT_TYPES.find(t => t.key === event.type) || {}).label || "Event";
+  const allDay = event.dayStart !== undefined;
+  const cats = event.tags || [];
+
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el || !anchorRect) return;
+    const pad = 8, w = el.offsetWidth, h = el.offsetHeight;
+    const vw = window.innerWidth, vh = window.innerHeight;
+    let left = anchorRect.left + anchorRect.width / 2 - w / 2;
+    left = Math.max(pad, Math.min(left, vw - w - pad));
+    let top = anchorRect.bottom + pad;
+    if (top + h > vh - pad) top = anchorRect.top - h - pad;
+    if (top < pad) top = Math.max(pad, vh - h - pad);
+    setPos({ top, left });
+  }, [anchorRect]);
+
+  useEffect(() => {
+    const onKey = e => { if (e.key === "Escape") onClose(); };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  return (
+    <>
+      <div className="ev-backdrop" onClick={onClose} />
+      <div ref={ref} className="ev-pop" role="dialog" aria-label={"Event details: " + event.title}
+        style={{ top: pos.top, left: pos.left }}>
+        <div className="ev-accent" style={{ background: color }} />
+        <div className="ev-head">
+          <span className="ev-title">{event.title}</span>
+          <button className="x" onClick={onClose} aria-label="Close">{I.close}</button>
+        </div>
+        <div className="ev-body">
+          <div className="ev-row">
+            <span className="ev-ic">{I.dotgrid}</span>
+            <span className="ev-k">Type</span>
+            <span className="ev-v">
+              <span className="ev-type"><span className="ev-dot" style={{ background: color }} />{typeLabel}</span>
+            </span>
+          </div>
+          <div className="ev-row">
+            <span className="ev-ic">{I.cal}</span>
+            <span className="ev-k">Date</span>
+            <span className="ev-v">
+              {allDay
+                ? (event.dayStart === event.dayEnd
+                    ? fmtDay(event.dayStart)
+                    : fmtDay(event.dayStart) + " – " + fmtDay(event.dayEnd))
+                : fmtDay(event.day)}
+            </span>
+          </div>
+          <div className="ev-row">
+            <span className="ev-ic">{I.clock}</span>
+            <span className="ev-k">Time</span>
+            <span className="ev-v">
+              {allDay ? "All day" : fmtHour(event.start) + " – " + fmtHour(event.end)}
+            </span>
+          </div>
+          <div className="ev-row">
+            <span className="ev-ic">{I.tag}</span>
+            <span className="ev-k">Categories</span>
+            <span className="ev-v">
+              {cats.length
+                ? <span className="ev-cats">{cats.map(c => <span className="ev-cat" key={c}>{c}</span>)}</span>
+                : <span className="ev-none">None</span>}
+            </span>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+
 /* ---------------- Calendar grid ---------------- */
-function CalendarGrid({ allDayEvents, timedEvents }) {
+function CalendarGrid({ allDayEvents, timedEvents, onSelect }) {
   const alldayHeight = allDayEvents.length * BAR_H + ALLDAY_PAD * 2;
   return (
     <div className="cal-grid">
@@ -511,6 +629,7 @@ function CalendarGrid({ allDayEvents, timedEvents }) {
               const span = e.dayEnd - e.dayStart + 1;
               return (
                 <div key={e.id} className="allday-bar" title={e.title}
+                  onClick={ev => onSelect(e, ev.currentTarget.getBoundingClientRect())}
                   style={{
                     left: `calc(${(e.dayStart / 7) * 100}% + 3px)`,
                     width: `calc(${(span / 7) * 100}% - 6px)`,
@@ -539,6 +658,7 @@ function CalendarGrid({ allDayEvents, timedEvents }) {
               <div key={di} className={"cal-day" + (w.weekend ? " weekend" : "")} style={{ height: 24 * HOUR_H }}>
                 {timedEvents.filter(e => e.day === di).map(e => (
                   <div key={e.id} className="appt" title={e.title}
+                    onClick={ev => onSelect(e, ev.currentTarget.getBoundingClientRect())}
                     style={{
                       top: e.start * HOUR_H,
                       height: Math.max(22, (e.end - e.start) * HOUR_H - 2),
@@ -563,12 +683,14 @@ function CalendarPage() {
   const [allDayEvents, setAllDayEvents] = useState(SEED_ALLDAY);
   const [timedEvents, setTimedEvents] = useState(SEED_TIMED);
   const [createOpen, setCreateOpen] = useState(false);
+  const [selected, setSelected] = useState(null);
 
   const addEvent = ({ allDay, event }) => {
     const id = "u" + Date.now();
     if (allDay) setAllDayEvents(list => [...list, { ...event, id }]);
     else setTimedEvents(list => [...list, { ...event, id }]);
   };
+  const selectEvent = (event, rect) => setSelected({ event, rect });
 
   return (
     <div className="content">
@@ -615,9 +737,16 @@ function CalendarPage() {
               {CUSTOMER_EVENT_TYPES.map(t => <span className="tag-pill" key={t.label} title={t.examples}>{t.label}</span>)}
             </div>
           </aside>
-          <CalendarGrid allDayEvents={allDayEvents} timedEvents={timedEvents} />
+          <CalendarGrid allDayEvents={allDayEvents} timedEvents={timedEvents} onSelect={selectEvent} />
         </div>
       </div>
+      {selected && (
+        <EventDetailPopover
+          event={selected.event}
+          anchorRect={selected.rect}
+          onClose={() => setSelected(null)}
+        />
+      )}
     </div>
   );
 }
