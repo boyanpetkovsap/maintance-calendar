@@ -685,6 +685,7 @@ function CalendarPage() {
   const [timedEvents, setTimedEvents] = useState(SEED_TIMED);
   const [createOpen, setCreateOpen] = useState(false);
   const [selected, setSelected] = useState(null);
+  const createAnchorRef = useRef(null);
 
   const addEvent = ({ allDay, event }) => {
     const id = "u" + Date.now();
@@ -692,6 +693,20 @@ function CalendarPage() {
     else setTimedEvents(list => [...list, { ...event, id }]);
   };
   const selectEvent = (event, rect) => setSelected({ event, rect });
+
+  useEffect(() => {
+    if (!createOpen) return;
+    const onDown = e => {
+      if (createAnchorRef.current && !createAnchorRef.current.contains(e.target)) setCreateOpen(false);
+    };
+    const onKey = e => { if (e.key === "Escape") setCreateOpen(false); };
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [createOpen]);
 
   return (
     <div className="content">
@@ -702,7 +717,7 @@ function CalendarPage() {
           <button className="icon-btn" title="Next week">{I.next}</button>
           <span className="cal-date">November 29 – December 5, 2026</span>
 
-          <div className="ce-anchor">
+          <div className="ce-anchor" ref={createAnchorRef}>
             <button className="btn-primary" onClick={() => setCreateOpen(o => !o)}>{I.plus}Create event</button>
             {createOpen && <CreateEventPopover onClose={() => setCreateOpen(false)} onCreate={addEvent} />}
           </div>
