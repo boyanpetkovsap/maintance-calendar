@@ -336,7 +336,7 @@ const typeColor = (k) => (EVENT_TYPES.find(t => t.key === k) || EVENT_TYPES[0]).
 
 const CUSTOMER_EVENT_TYPES = [
   { label: "Solution Deployment & Roll-out",       examples: "Go-Live, Migration, Roll-out, Carve-out" },
-  { label: "High-Throughput Processing Peaks",     examples: "Black Friday sales events, mass data load, catalog update, EDI peak exchange" },
+  { label: "High-Throughput Processing Peaks",     examples: "Major sales events, mass data load, catalog update, EDI peak exchange" },
   { label: "Business & Regulatory Obligation Cycles", examples: "Year-end close, regulatory reporting" },
   { label: "Specialized Business Process Windows", examples: "Full planning run, new product introduction, batch production" },
   { label: "Non-Standard Operating-State Windows", examples: "Failover test, Datacenter cutover, cyber incident recovery" },
@@ -445,20 +445,21 @@ function CreateEventPopover({ onClose, onCreate }) {
   const [startTime, setStartTime] = useState("10:00");
   const [endDate, setEndDate] = useState("2026-12-02");
   const [endTime, setEndTime] = useState("12:00");
+  const [contact, setContact] = useState("");
   const [tags, setTags] = useState([]);
 
   const toggleTag = (t) => setTags(ts => ts.includes(t) ? ts.filter(x => x !== t) : [...ts, t]);
-  const valid = name.trim() && startDate && endDate && (allDay || (startTime && endTime));
+  const valid = name.trim() && contact.trim() && startDate && endDate && (allDay || (startTime && endTime));
 
   const submit = () => {
     if (!valid) return;
     const ds = dayIndexFromDate(startDate), de = dayIndexFromDate(endDate);
     if (allDay) {
-      onCreate({ allDay: true, event: { type: "customer", title: name.trim(), dayStart: ds, dayEnd: Math.max(ds, de), tags } });
+      onCreate({ allDay: true, event: { type: "customer", title: name.trim(), contact: contact.trim(), dayStart: ds, dayEnd: Math.max(ds, de), tags } });
     } else {
       let s = timeToHour(startTime), e = timeToHour(endTime);
       if (e <= s) e = Math.min(24, s + 1);
-      onCreate({ allDay: false, event: { type: "customer", title: name.trim(), day: ds, start: s, end: e, tags } });
+      onCreate({ allDay: false, event: { type: "customer", title: name.trim(), contact: contact.trim(), day: ds, start: s, end: e, tags } });
     }
     onClose();
   };
@@ -473,6 +474,11 @@ function CreateEventPopover({ onClose, onCreate }) {
         <div className="fld">
           <label>Event name<span className="req">*</span></label>
           <input className="inp" value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Q3 Platform Upgrade" autoFocus />
+        </div>
+
+        <div className="fld">
+          <label>Main Contact / Project Lead<span className="req">*</span></label>
+          <input className="inp" value={contact} onChange={e => setContact(e.target.value)} placeholder="e.g. Jane Smith" />
         </div>
 
         <div className="fld toggle-row">
